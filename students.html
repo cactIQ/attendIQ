@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AttendIQ — Students</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0f1117; --surface: #1a1d27; --surface2: #22263a; --border: #2e3250;
+      --accent: #6c63ff; --accent2: #00d4aa; --warn: #f59e0b; --danger: #ef4444;
+      --text: #e2e8f0; --muted: #8892a4; --green: #22c55e; --radius: 12px;
+    }
+    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+
+    /* NAV */
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 28px; height: 60px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .logo-icon { width: 34px; height: 34px; border-radius: 8px; background: var(--accent); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; color: #fff; }
+    .logo-text { font-weight: 700; font-size: 18px; }
+    .logo-text span { color: var(--accent); }
+    nav { display: flex; gap: 4px; }
+    nav a { padding: 6px 14px; border-radius: 8px; text-decoration: none; color: var(--muted); font-size: 13px; font-weight: 500; transition: background .15s, color .15s; }
+    nav a:hover, nav a.active { background: var(--surface2); color: var(--text); }
+
+    /* LAYOUT */
+    .page { padding: 24px 28px; max-width: 1300px; margin: 0 auto; }
+    .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .page-title { font-size: 20px; font-weight: 700; }
+    .page-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+    /* FILTERS */
+    .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+    .filters input, .filters select {
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      border-radius: 8px; padding: 8px 14px; font-size: 13px; outline: none;
+      transition: border-color .15s;
+    }
+    .filters input { width: 240px; }
+    .filters input:focus, .filters select:focus { border-color: var(--accent); }
+    .filters select option { background: var(--surface2); }
+
+    /* TABLE CARD */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th { text-align: left; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 14px 16px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    tbody td { padding: 12px 16px; font-size: 13px; }
+
+    .badge-active   { background: #16302b; color: #22c55e; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-inactive { background: #2d1010; color: #f87171; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-gender   { background: var(--surface2); color: var(--muted); padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+
+    .edit-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text); border-radius: 7px; padding: 5px 13px; font-size: 12px; cursor: pointer; transition: border-color .15s; }
+    .edit-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+    .empty { text-align: center; padding: 60px; color: var(--muted); }
+
+    /* MODAL */
+    .modal-backdrop { position: fixed; inset: 0; background: #00000088; display: none; align-items: center; justify-content: center; z-index: 200; backdrop-filter: blur(2px); }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; width: 100%; max-width: 500px; padding: 28px; position: relative; }
+    .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .modal-sub { font-size: 12px; color: var(--muted); margin-bottom: 24px; }
+    .close-btn { position: absolute; top: 18px; right: 18px; background: var(--surface2); border: none; color: var(--muted); border-radius: 6px; width: 28px; height: 28px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; }
+    .close-btn:hover { color: var(--text); }
+
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+    .form-group input, .form-group select {
+      background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+      border-radius: 8px; padding: 9px 12px; font-size: 13px; outline: none;
+      transition: border-color .15s;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--accent); }
+    .form-group input:read-only { color: var(--muted); cursor: default; }
+
+    .toggle-row { display: flex; align-items: center; gap: 10px; }
+    .toggle { appearance: none; width: 40px; height: 22px; border-radius: 11px; background: var(--border); cursor: pointer; position: relative; transition: background .2s; }
+    .toggle:checked { background: var(--green); }
+    .toggle::after { content: ''; position: absolute; width: 16px; height: 16px; background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: left .2s; }
+    .toggle:checked::after { left: 21px; }
+
+    .modal-footer { display: flex; gap: 10px; margin-top: 24px; justify-content: flex-end; }
+    .btn-cancel { background: var(--surface2); border: 1px solid var(--border); color: var(--muted); border-radius: 8px; padding: 9px 20px; font-size: 13px; cursor: pointer; }
+    .btn-cancel:hover { color: var(--text); }
+    .btn-save { background: var(--accent); border: none; color: #fff; border-radius: 8px; padding: 9px 24px; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity .15s; }
+    .btn-save:hover { opacity: .85; }
+    .btn-save:disabled { opacity: .5; cursor: default; }
+
+    /* TOAST */
+    .toast { position: fixed; bottom: 28px; right: 28px; background: #1e2d1e; border: 1px solid var(--green); color: var(--green); padding: 12px 20px; border-radius: 10px; font-size: 13px; font-weight: 600; display: none; z-index: 300; }
+    .toast.error { background: #2d1010; border-color: var(--danger); color: var(--danger); }
+    .toast.show { display: block; animation: fadeup .2s ease; }
+    @keyframes fadeup { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: none; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="/">
+    <div class="logo-icon">A</div>
+    <div class="logo-text">Attend<span>IQ</span></div>
+  </a>
+  <nav>
+    <a href="/">Dashboard</a>
+    <a href="/students" class="active">Students</a>
+    <a href="/upload">Upload Scores</a>
+  </nav>
+</header>
+
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">Students</div>
+      <div class="page-sub" id="countLabel">Loading…</div>
+    </div>
+  </div>
+
+  <div class="filters">
+    <input type="text" id="searchInput" placeholder="Search by name…" oninput="applyFilter()" />
+    <select id="classFilter" onchange="applyFilter()">
+      <option value="">All classes</option>
+    </select>
+    <select id="statusFilter" onchange="applyFilter()">
+      <option value="">All status</option>
+      <option value="active">Active</option>
+      <option value="inactive">Inactive</option>
+    </select>
+  </div>
+
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Class</th>
+            <th>Roll</th>
+            <th>Gender</th>
+            <th>WhatsApp</th>
+            <th>Email</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="studentTable"><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-backdrop" id="modal">
+  <div class="modal">
+    <button class="close-btn" onclick="closeModal()">✕</button>
+    <div class="modal-title">Edit Student</div>
+    <div class="modal-sub" id="modalSub"></div>
+    <form id="editForm" onsubmit="saveStudent(event)">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Student ID</label>
+          <input type="text" id="f_id" readonly />
+        </div>
+        <div class="form-group">
+          <label>Roll No.</label>
+          <input type="text" id="f_roll" readonly />
+        </div>
+        <div class="form-group full">
+          <label>Full Name</label>
+          <input type="text" id="f_name" required />
+        </div>
+        <div class="form-group">
+          <label>Gender</label>
+          <select id="f_gender">
+            <option value="M">Male</option>
+            <option value="F">Female</option>
+            <option value="O">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date of Birth</label>
+          <input type="date" id="f_dob" />
+        </div>
+        <div class="form-group">
+          <label>WhatsApp Number</label>
+          <input type="text" id="f_whatsapp" placeholder="+91…" />
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="f_email" />
+        </div>
+        <div class="form-group full">
+          <label>Status</label>
+          <div class="toggle-row">
+            <input type="checkbox" class="toggle" id="f_active" />
+            <span id="toggleLabel" style="font-size:13px;color:var(--muted)">Active</span>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button type="submit" class="btn-save" id="saveBtn">Save changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let allStudents = [];
+let editingId   = null;
+
+const genderLabel = { M: 'Male', F: 'Female', O: 'Other' };
+
+async function loadClasses() {
+  const classes = await fetch('/api/classes-list').then(r => r.json());
+  const sel = document.getElementById('classFilter');
+  classes.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = `Std ${c.standard} – Div ${c.division}`;
+    sel.appendChild(opt);
+  });
+}
+
+async function loadStudents() {
+  allStudents = await fetch('/api/students').then(r => r.json());
+  applyFilter();
+}
+
+function applyFilter() {
+  const search = document.getElementById('searchInput').value.toLowerCase();
+  const cls    = document.getElementById('classFilter').value;
+  const status = document.getElementById('statusFilter').value;
+
+  const filtered = allStudents.filter(s => {
+    if (search && !s.name.toLowerCase().includes(search)) return false;
+    if (cls    && String(s.class_id) !== cls) return false;
+    if (status === 'active'   && !s.is_active) return false;
+    if (status === 'inactive' &&  s.is_active) return false;
+    return true;
+  });
+
+  document.getElementById('countLabel').textContent =
+    `${filtered.length} student${filtered.length !== 1 ? 's' : ''} · AY 2026`;
+
+  document.getElementById('studentTable').innerHTML = filtered.length
+    ? filtered.map(s => `
+        <tr>
+          <td style="color:var(--muted);font-size:11px">${s.id}</td>
+          <td><strong>${s.name}</strong></td>
+          <td style="color:var(--muted)">Std ${s.standard} – ${s.division}</td>
+          <td style="color:var(--muted)">${s.roll_number}</td>
+          <td><span class="badge-gender">${genderLabel[s.gender] || s.gender}</span></td>
+          <td>${s.whatsapp_number || '<span style="color:var(--muted)">—</span>'}</td>
+          <td style="color:var(--muted)">${s.email || '—'}</td>
+          <td><span class="${s.is_active ? 'badge-active' : 'badge-inactive'}">${s.is_active ? 'Active' : 'Inactive'}</span></td>
+          <td><button class="edit-btn" onclick="openEdit('${s.id}')">Edit</button></td>
+        </tr>
+      `).join('')
+    : `<tr><td colspan="9" class="empty">No students found.</td></tr>`;
+}
+
+function openEdit(id) {
+  const s = allStudents.find(x => x.id === id);
+  if (!s) return;
+  editingId = id;
+
+  document.getElementById('modalSub').textContent = `${s.name} · Std ${s.standard}–${s.division} · Roll ${s.roll_number}`;
+  document.getElementById('f_id').value       = s.id;
+  document.getElementById('f_roll').value     = s.roll_number;
+  document.getElementById('f_name').value     = s.name;
+  document.getElementById('f_gender').value   = s.gender;
+  document.getElementById('f_dob').value      = s.date_of_birth || '';
+  document.getElementById('f_whatsapp').value = s.whatsapp_number || '';
+  document.getElementById('f_email').value    = s.email || '';
+
+  const toggle = document.getElementById('f_active');
+  toggle.checked = s.is_active;
+  document.getElementById('toggleLabel').textContent = s.is_active ? 'Active' : 'Inactive';
+  toggle.onchange = () => {
+    document.getElementById('toggleLabel').textContent = toggle.checked ? 'Active' : 'Inactive';
+  };
+
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  editingId = null;
+}
+
+async function saveStudent(e) {
+  e.preventDefault();
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true;
+  btn.textContent = 'Saving…';
+
+  const payload = {
+    name:            document.getElementById('f_name').value.trim(),
+    gender:          document.getElementById('f_gender').value,
+    date_of_birth:   document.getElementById('f_dob').value     || null,
+    whatsapp_number: document.getElementById('f_whatsapp').value || null,
+    email:           document.getElementById('f_email').value   || null,
+    is_active:       document.getElementById('f_active').checked,
+  };
+
+  try {
+    const res = await fetch(`/api/students/${editingId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(await res.text());
+
+    // Update local data so table refreshes without a full reload
+    const idx = allStudents.findIndex(x => x.id === editingId);
+    if (idx !== -1) Object.assign(allStudents[idx], payload);
+    applyFilter();
+    closeModal();
+    showToast('Student updated successfully');
+  } catch (err) {
+    showToast('Save failed: ' + err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Save changes';
+  }
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// Close modal on backdrop click
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
+
+loadClasses();
+loadStudents();
+</script>
+</body>
+</html>

@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AttendIQ — Parent Report Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3250;
+      --accent: #6c63ff;
+      --accent2: #00d4aa;
+      --warn: #f59e0b;
+      --danger: #ef4444;
+      --text: #e2e8f0;
+      --muted: #8892a4;
+      --green: #22c55e;
+      --radius: 12px;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 14px;
+      min-height: 100vh;
+    }
+
+    /* ── TOP NAV ── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 16px; color: #fff;
+    }
+    .logo-text { font-weight: 700; font-size: 18px; }
+    .logo-text span { color: var(--accent); }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .institute-badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 14px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .institute-badge strong { color: var(--text); }
+    .send-btn {
+      background: #25d366;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 8px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      transition: opacity .15s;
+    }
+    .send-btn:hover { opacity: .88; }
+
+    /* ── LAYOUT ── */
+    .page { padding: 24px 28px; max-width: 1400px; margin: 0 auto; }
+
+    /* ── SECTION HEADER ── */
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 14px;
+      margin-top: 28px;
+    }
+    .section-title:first-child { margin-top: 0; }
+
+    /* ── STAT CARDS ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 1100px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 600px)  { .stats-grid { grid-template-columns: 1fr; } }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .stat-card.purple::before { background: var(--accent); }
+    .stat-card.teal::before   { background: var(--accent2); }
+    .stat-card.amber::before  { background: var(--warn); }
+    .stat-card.green::before  { background: var(--green); }
+
+    .stat-label { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+    .stat-value { font-size: 34px; font-weight: 800; margin: 6px 0 4px; }
+    .stat-card.purple .stat-value { color: var(--accent); }
+    .stat-card.teal   .stat-value { color: var(--accent2); }
+    .stat-card.amber  .stat-value { color: var(--warn); }
+    .stat-card.green  .stat-value { color: var(--green); }
+    .stat-sub { font-size: 12px; color: var(--muted); }
+    .stat-icon {
+      position: absolute;
+      right: 18px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 38px;
+      opacity: .12;
+    }
+
+    /* ── TWO COLUMN ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .three-col { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+    @media (max-width: 900px) { .two-col, .three-col { grid-template-columns: 1fr; } }
+
+    /* ── CARD ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+    }
+    .card-title { font-size: 14px; font-weight: 700; }
+    .card-sub   { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .badge {
+      font-size: 11px;
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-weight: 600;
+    }
+    .badge-green  { background: #16302b; color: var(--green); }
+    .badge-amber  { background: #2d2006; color: var(--warn); }
+    .badge-purple { background: #1e1b40; color: var(--accent); }
+    .badge-red    { background: #2d1010; color: var(--danger); }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+      color: var(--muted);
+      padding: 0 10px 10px;
+    }
+    tbody tr { border-top: 1px solid var(--border); }
+    tbody tr:hover { background: var(--surface2); }
+    tbody td { padding: 11px 10px; font-size: 13px; }
+
+    .progress-bar { background: var(--surface2); border-radius: 99px; height: 6px; min-width: 80px; }
+    .progress-fill { height: 6px; border-radius: 99px; }
+
+    /* ── ATTENDANCE PILLS ── */
+    .att-present { color: var(--green); }
+    .att-absent  { color: var(--danger); }
+    .att-late    { color: var(--warn); }
+
+    /* ── MESSAGE LOG ── */
+    .msg-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .msg-item:last-child { border-bottom: none; }
+    .msg-avatar {
+      width: 36px; height: 36px; border-radius: 50%;
+      background: var(--surface2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+    }
+    .msg-body { flex: 1; min-width: 0; }
+    .msg-name { font-weight: 600; font-size: 13px; }
+    .msg-preview { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .msg-meta { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+    .msg-time { font-size: 11px; color: var(--muted); }
+    .msg-status { font-size: 11px; }
+    .status-delivered { color: var(--accent2); }
+    .status-read      { color: var(--accent); }
+    .status-sent      { color: var(--muted); }
+    .status-failed    { color: var(--danger); }
+
+    /* ── GRADE PILL ── */
+    .grade {
+      display: inline-block;
+      border-radius: 6px;
+      padding: 2px 8px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .grade-Ap { background:#0f2e1a; color:#22c55e; }
+    .grade-A  { background:#0d2535; color:#38bdf8; }
+    .grade-B  { background:#1e1b40; color:#818cf8; }
+    .grade-C  { background:#2d2006; color:#fbbf24; }
+    .grade-D  { background:#2a1e05; color:#f97316; }
+    .grade-F  { background:#2d1010; color:#f87171; }
+
+    /* ── AUTOMATION PANEL ── */
+    .auto-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .auto-row:last-child { border-bottom: none; }
+    .auto-label { font-size: 13px; color: var(--muted); }
+    .auto-value { font-size: 13px; font-weight: 600; }
+    .dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+    }
+    .dot-green  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    .dot-amber  { background: var(--warn); }
+    .dot-red    { background: var(--danger); }
+
+    /* ── CANVAS SIZING ── */
+    .chart-container { position: relative; }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">A</div>
+    <div class="logo-text">Attend<span>IQ</span></div>
+  </div>
+  <nav style="display:flex;gap:4px">
+    <a href="/" style="padding:6px 14px;border-radius:8px;text-decoration:none;background:#22263a;color:#e2e8f0;font-size:13px;font-weight:500">Dashboard</a>
+    <a href="/students" style="padding:6px 14px;border-radius:8px;text-decoration:none;color:#8892a4;font-size:13px;font-weight:500">Students</a>
+    <a href="/upload" style="padding:6px 14px;border-radius:8px;text-decoration:none;color:#8892a4;font-size:13px;font-weight:500">Upload Scores</a>
+  </nav>
+  <div class="header-right">
+    <div class="institute-badge">Institute: <strong>BFC — Bright Future Coaching</strong> &nbsp;|&nbsp; AY 2026</div>
+    <button class="send-btn" onclick="simulateSend()">
+      <span>📱</span> Send Monthly Reports
+    </button>
+  </div>
+</header>
+
+<div class="page">
+
+  <!-- ── STAT CARDS ── -->
+  <div class="section-title">Overview — May 2026</div>
+  <div class="stats-grid">
+    <div class="stat-card purple">
+      <div class="stat-label">Active Students</div>
+      <div class="stat-value">248</div>
+      <div class="stat-sub">Across 8 classes · 6 inactive</div>
+      <div class="stat-icon">🎓</div>
+    </div>
+    <div class="stat-card teal">
+      <div class="stat-label">Avg Attendance</div>
+      <div class="stat-value">84%</div>
+      <div class="stat-sub">↑ 3% from April · 22 school days</div>
+      <div class="stat-icon">📅</div>
+    </div>
+    <div class="stat-card amber">
+      <div class="stat-label">Avg Score</div>
+      <div class="stat-value">71%</div>
+      <div class="stat-sub">Across 6 subjects · 3 tests this month</div>
+      <div class="stat-icon">📝</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">WhatsApp Sent</div>
+      <div class="stat-value">312</div>
+      <div class="stat-sub">294 delivered · 18 failed</div>
+      <div class="stat-icon">💬</div>
+    </div>
+  </div>
+
+  <!-- ── CHARTS ROW ── -->
+  <div class="section-title">Attendance Trend</div>
+  <div class="three-col">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Monthly Attendance (Jan – May 2026)</div>
+          <div class="card-sub">Present vs Absent vs Late</div>
+        </div>
+        <span class="badge badge-green">Live</span>
+      </div>
+      <div class="chart-container">
+        <canvas id="attendanceChart" height="90"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Grade Distribution</div>
+          <div class="card-sub">May 2026 — all tests</div>
+        </div>
+      </div>
+      <div class="chart-container">
+        <canvas id="gradeChart" height="90"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CLASS TABLE ── -->
+  <div class="section-title">Class-wise Performance</div>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">All Classes — AY 2026</div>
+        <div class="card-sub">Sorted by average score</div>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Class</th>
+            <th>Teacher</th>
+            <th>Students</th>
+            <th>Attendance %</th>
+            <th>Avg Score %</th>
+            <th>Top Grade</th>
+            <th>Reports Sent</th>
+          </tr>
+        </thead>
+        <tbody id="classTable"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── STUDENT SCORES + MESSAGE LOG ── -->
+  <div class="section-title">Recent Activity</div>
+  <div class="two-col">
+
+    <!-- SCORE TABLE -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Latest Test Scores</div>
+          <div class="card-sub">Most recent per student</div>
+        </div>
+        <span class="badge badge-purple">Unit Test 3</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Student ID</th>
+              <th>Name</th>
+              <th>Subject</th>
+              <th>Score</th>
+              <th>Grade</th>
+            </tr>
+          </thead>
+          <tbody id="scoreTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MESSAGE LOG -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">WhatsApp Message Log</div>
+          <div class="card-sub">message_log · May 2026</div>
+        </div>
+        <span class="badge badge-green">Live</span>
+      </div>
+      <div id="msgLog"></div>
+    </div>
+
+  </div>
+
+  <!-- ── AUTOMATION PANEL + ABSENCE ALERTS ── -->
+  <div class="section-title">Automation &amp; Alerts</div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">WhatsApp Automation Status</div>
+      </div>
+      <div class="auto-row">
+        <span class="auto-label">Scheduler</span>
+        <span class="auto-value"><span class="dot dot-green"></span>Running</span>
+      </div>
+      <div class="auto-row">
+        <span class="auto-label">Next monthly report send</span>
+        <span class="auto-value">June 1, 2026 · 08:00 IST</span>
+      </div>
+      <div class="auto-row">
+        <span class="auto-label">Pending in queue</span>
+        <span class="auto-value" style="color:var(--warn)">18 messages</span>
+      </div>
+      <div class="auto-row">
+        <span class="auto-label">Primary parent coverage</span>
+        <span class="auto-value">241 / 248 students</span>
+      </div>
+      <div class="auto-row">
+        <span class="auto-label">Dry run (to owner) last</span>
+        <span class="auto-value" style="color:var(--accent2)">28 May · Passed ✓</span>
+      </div>
+      <div class="auto-row">
+        <span class="auto-label">Triggered by</span>
+        <span class="auto-value">scheduler</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Absence Alerts — May 2026</div>
+        <span class="badge badge-red">7 students</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Class</th>
+              <th>Absent Days</th>
+              <th>Alert Sent</th>
+            </tr>
+          </thead>
+          <tbody id="absenceTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /page -->
+
+<script>
+const gradeColor = { 'A+':'#22c55e','A':'#38bdf8','B':'#818cf8','C':'#fbbf24','D':'#f97316','F':'#f87171' };
+const gradeCls   = { 'A+':'grade-Ap','A':'grade-A','B':'grade-B','C':'grade-C','D':'grade-D','F':'grade-F' };
+const statusLabel = { read:'✔✔ Read', delivered:'✔✔ Delivered', sent:'✔ Sent', failed:'✖ Failed' };
+const statusCls   = { read:'status-read', delivered:'status-delivered', sent:'status-sent', failed:'status-failed' };
+const typeEmoji   = { monthly_report:'📊', absence_alert:'⚠️', score_update:'📝', fee_reminder:'💰', custom:'💬' };
+
+function attColor(v)   { return v >= 85 ? '#22c55e' : v >= 75 ? '#fbbf24' : '#ef4444'; }
+function scoreColor(v) { return v >= 75 ? '#22c55e' : v >= 60 ? '#fbbf24' : '#ef4444'; }
+
+function renderClasses(rows) {
+  document.getElementById('classTable').innerHTML = rows.map(c => {
+    const att = parseFloat(c.att_pct) || 0;
+    const sc  = parseFloat(c.avg_score) || 0;
+    const ac  = attColor(att), scc = scoreColor(sc);
+    return `<tr>
+      <td><strong>Std ${c.standard} – Div ${c.division}</strong></td>
+      <td style="color:var(--muted)">${c.teacher}</td>
+      <td>${c.student_count}</td>
+      <td>
+        <span style="color:${ac};font-weight:600">${att}%</span>
+        <div class="progress-bar" style="margin-top:4px">
+          <div class="progress-fill" style="width:${att}%;background:${ac}"></div>
+        </div>
+      </td>
+      <td>
+        <span style="color:${scc};font-weight:600">${sc}%</span>
+        <div class="progress-bar" style="margin-top:4px">
+          <div class="progress-fill" style="width:${sc}%;background:${scc}"></div>
+        </div>
+      </td>
+      <td><span style="color:${gradeColor[c.grade] || '#8892a4'};font-weight:700">${c.grade || '—'}</span></td>
+      <td style="color:var(--accent2)">${c.reports_sent} / ${c.student_count}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderScores(rows) {
+  document.getElementById('scoreTable').innerHTML = rows.map(s => `
+    <tr>
+      <td style="color:var(--muted);font-size:11px">${s.student_id}</td>
+      <td><strong>${s.student_name}</strong></td>
+      <td style="color:var(--muted)">${s.subject}</td>
+      <td>${s.marks_obtained}/${s.total_marks}</td>
+      <td><span class="grade ${gradeCls[s.grade] || ''}">${s.grade}</span></td>
+    </tr>
+  `).join('');
+}
+
+function renderMessages(rows) {
+  document.getElementById('msgLog').innerHTML = rows.map(m => {
+    const time = m.month_year || '';
+    return `<div class="msg-item">
+      <div class="msg-avatar">${typeEmoji[m.message_type] || '💬'}</div>
+      <div class="msg-body">
+        <div class="msg-name">${m.parent_name} (${m.student_name})</div>
+        <div class="msg-preview">${m.message_content}</div>
+        <div class="msg-meta">
+          <span class="msg-time">${time}</span>
+          <span class="msg-status ${statusCls[m.delivery_status] || ''}">${statusLabel[m.delivery_status] || m.delivery_status}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderAlerts(rows) {
+  document.getElementById('absenceTable').innerHTML = rows.map(a => `
+    <tr>
+      <td><strong>${a.student_name}</strong></td>
+      <td style="color:var(--muted)">Std ${a.standard}${a.division}</td>
+      <td style="color:var(--danger);font-weight:700">${a.absent_days} days</td>
+      <td><span class="badge ${a.alert_status === 'Sent' ? 'badge-green' : 'badge-amber'}">${a.alert_status}</span></td>
+    </tr>
+  `).join('');
+}
+
+function renderOverview(d) {
+  document.querySelector('.stat-card.purple .stat-value').textContent = d.active_students;
+  document.querySelector('.stat-card.teal .stat-value').textContent   = d.avg_attendance + '%';
+  document.querySelector('.stat-card.amber .stat-value').textContent  = d.avg_score + '%';
+  document.querySelector('.stat-card.green .stat-value').textContent  = d.messages.total;
+  document.querySelector('.stat-card.green .stat-sub').textContent    = `${d.messages.delivered} delivered · ${d.messages.failed} failed`;
+}
+
+let attChart, gradeChart;
+
+function initCharts() {
+  attChart = new Chart(document.getElementById('attendanceChart'), {
+    type: 'bar',
+    data: {
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+      datasets: [
+        { label: 'Present', data: [86, 82, 85, 81, 84], backgroundColor: '#22c55e99', borderRadius: 5 },
+        { label: 'Late',    data: [5,  7,  4,  6,  5 ], backgroundColor: '#f59e0b99', borderRadius: 5 },
+        { label: 'Absent',  data: [9,  11, 11, 13, 11], backgroundColor: '#ef444499', borderRadius: 5 },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#8892a4', boxWidth: 12, font: { size: 11 } } }, tooltip: { mode: 'index' } },
+      scales: {
+        x: { stacked: true, ticks: { color: '#8892a4' }, grid: { color: '#2e3250' } },
+        y: { stacked: true, ticks: { color: '#8892a4', callback: v => v+'%' }, grid: { color: '#2e3250' }, max: 100 }
+      }
+    }
+  });
+
+  gradeChart = new Chart(document.getElementById('gradeChart'), {
+    type: 'doughnut',
+    data: {
+      labels: ['A+', 'A', 'B', 'C', 'D', 'F'],
+      datasets: [{ data: [0,0,0,0,0,0], backgroundColor: ['#22c55e','#38bdf8','#818cf8','#fbbf24','#f97316','#ef4444'], borderWidth: 2, borderColor: '#1a1d27' }]
+    },
+    options: { responsive: true, cutout: '65%', plugins: { legend: { position: 'right', labels: { color: '#8892a4', boxWidth: 12, padding: 10, font: { size: 11 } } } } }
+  });
+}
+
+function updateGradeChart(scores) {
+  const counts = { 'A+':0, 'A':0, 'B':0, 'C':0, 'D':0, 'F':0 };
+  scores.forEach(s => { if (counts[s.grade] !== undefined) counts[s.grade]++; });
+  gradeChart.data.datasets[0].data = Object.values(counts);
+  gradeChart.update();
+}
+
+async function loadAll() {
+  try {
+    const [overview, classes, scores, messages, alerts] = await Promise.all([
+      fetch('/api/overview').then(r => r.json()),
+      fetch('/api/classes').then(r => r.json()),
+      fetch('/api/scores').then(r => r.json()),
+      fetch('/api/messages').then(r => r.json()),
+      fetch('/api/alerts').then(r => r.json()),
+    ]);
+    renderOverview(overview);
+    renderClasses(classes);
+    renderScores(scores);
+    renderMessages(messages);
+    renderAlerts(alerts);
+    updateGradeChart(scores);
+  } catch (e) {
+    console.error('API fetch failed:', e);
+    document.querySelector('.page').insertAdjacentHTML('afterbegin',
+      `<div style="background:#2d1010;color:#f87171;padding:12px 16px;border-radius:8px;margin-bottom:16px;font-size:13px;">
+        API not reachable — start the server: <code>cd api && uvicorn main:app --reload</code>
+      </div>`
+    );
+  }
+}
+
+initCharts();
+loadAll();
+
+function simulateSend() {
+  const btn = document.querySelector('.send-btn');
+  btn.textContent = '⏳ Sending dry run…';
+  btn.disabled = true;
+  setTimeout(() => {
+    btn.innerHTML = '<span>✅</span> Dry Run Passed — Queued';
+    setTimeout(() => { btn.innerHTML = '<span>📱</span> Send Monthly Reports'; btn.disabled = false; }, 3000);
+  }, 1500);
+}
+</script>
+</body>
+</html>
