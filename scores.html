@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AttendIQ — Test Scores</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#0f1117; --surface:#1a1d27; --surface2:#22263a; --border:#2e3250;
+      --accent:#6c63ff; --accent2:#00d4aa; --warn:#f59e0b; --danger:#ef4444;
+      --text:#e2e8f0; --muted:#8892a4; --green:#22c55e; --radius:12px;
+    }
+    body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; font-size:14px; min-height:100vh; }
+
+    header { background:var(--surface); border-bottom:1px solid var(--border); padding:0 28px; height:60px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+    .logo { display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--text); }
+    .logo-icon { width:34px; height:34px; border-radius:8px; background:var(--accent); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; color:#fff; }
+    .logo-text { font-weight:700; font-size:18px; }
+    .logo-text span { color:var(--accent); }
+    nav { display:flex; gap:4px; }
+    nav a { padding:6px 14px; border-radius:8px; text-decoration:none; color:var(--muted); font-size:13px; font-weight:500; transition:background .15s,color .15s; }
+    nav a:hover, nav a.active { background:var(--surface2); color:var(--text); }
+
+    /* TABS */
+    .tabs { display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:24px; }
+    .tab { padding:10px 20px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; transition:color .15s,border-color .15s; background:none; border-top:none; border-left:none; border-right:none; }
+    .tab:hover { color:var(--text); }
+    .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+
+    .page { padding:24px 28px; max-width:1200px; margin:0 auto; }
+
+    /* SELECTOR PANEL */
+    .selector { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:20px 24px; margin-bottom:20px; }
+    .selector-title { font-size:11px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); margin-bottom:14px; }
+    .selector-row { display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end; }
+    .sel-group { display:flex; flex-direction:column; gap:6px; }
+    .sel-group label { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+    .sel-group select {
+      background:var(--surface2); border:1px solid var(--border); color:var(--text);
+      border-radius:8px; padding:8px 14px; font-size:13px; outline:none; min-width:180px;
+      transition:border-color .15s; cursor:pointer;
+    }
+    .sel-group select:focus { border-color:var(--accent); }
+    .sel-group select option { background:var(--surface2); }
+    .load-btn {
+      background:var(--accent); border:none; color:#fff; border-radius:8px;
+      padding:9px 22px; font-size:13px; font-weight:600; cursor:pointer;
+      transition:opacity .15s; align-self:flex-end;
+    }
+    .load-btn:hover { opacity:.85; }
+    .load-btn:disabled { opacity:.4; cursor:default; }
+
+    /* RESULTS HEADER */
+    .results-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap; gap:10px; }
+    .results-title { font-size:16px; font-weight:700; }
+    .results-sub { font-size:12px; color:var(--muted); margin-top:2px; }
+
+    /* SUMMARY PILLS */
+    .pills { display:flex; gap:10px; flex-wrap:wrap; }
+    .pill { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 14px; text-align:center; min-width:80px; }
+    .pill-val { font-size:18px; font-weight:800; }
+    .pill-lbl { font-size:10px; color:var(--muted); margin-top:1px; text-transform:uppercase; letter-spacing:.05em; }
+    .pill.purple .pill-val { color:var(--accent); }
+    .pill.teal   .pill-val { color:var(--accent2); }
+    .pill.green  .pill-val { color:var(--green); }
+    .pill.amber  .pill-val { color:var(--warn); }
+    .pill.red    .pill-val { color:var(--danger); }
+
+    /* SEARCH */
+    .search-wrap { position:relative; }
+    .search-wrap input {
+      background:var(--surface); border:1px solid var(--border); color:var(--text);
+      border-radius:8px; padding:8px 14px 8px 36px; font-size:13px; outline:none;
+      width:240px; transition:border-color .15s;
+    }
+    .search-wrap input:focus { border-color:var(--accent); }
+    .search-wrap::before { content:'🔍'; position:absolute; left:11px; top:50%; transform:translateY(-50%); font-size:13px; pointer-events:none; }
+
+    /* TABLE */
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; }
+    thead th {
+      background:var(--surface2); text-align:left; padding:11px 16px;
+      font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);
+      white-space:nowrap; cursor:pointer; user-select:none;
+    }
+    thead th:hover { color:var(--text); }
+    thead th.sorted { color:var(--accent); }
+    tbody tr { border-top:1px solid var(--border); transition:background .1s; }
+    tbody tr:hover { background:var(--surface2); }
+    tbody td { padding:11px 16px; font-size:13px; }
+
+    .grade { display:inline-block; border-radius:6px; padding:2px 9px; font-size:12px; font-weight:700; }
+    .grade-Ap { background:#0f2e1a; color:#22c55e; }
+    .grade-A  { background:#0d2535; color:#38bdf8; }
+    .grade-B  { background:#1e1b40; color:#818cf8; }
+    .grade-C  { background:#2d2006; color:#fbbf24; }
+    .grade-D  { background:#2a1e05; color:#f97316; }
+    .grade-F  { background:#2d1010; color:#f87171; }
+
+    .bar { background:var(--surface2); border-radius:99px; height:5px; min-width:80px; margin-top:4px; }
+    .bar-fill { height:5px; border-radius:99px; }
+
+    .rank { font-size:11px; font-weight:700; color:var(--muted); width:22px; text-align:right; }
+    .rank.gold   { color:#f59e0b; }
+    .rank.silver { color:#94a3b8; }
+    .rank.bronze { color:#b45309; }
+
+    .empty { text-align:center; padding:60px 20px; color:var(--muted); font-size:13px; }
+    .placeholder { text-align:center; padding:60px 20px; color:var(--muted); }
+    .placeholder-icon { font-size:48px; margin-bottom:12px; opacity:.4; }
+    .placeholder-text { font-size:14px; }
+
+    /* UPLOAD TAB */
+    .drop-zone { border:2px dashed var(--border); border-radius:var(--radius); padding:50px 40px; text-align:center; cursor:pointer; transition:border-color .2s,background .2s; background:var(--surface); }
+    .drop-zone:hover, .drop-zone.drag-over { border-color:var(--accent); background:var(--surface2); }
+    .drop-icon { font-size:44px; margin-bottom:14px; }
+    .drop-title { font-size:16px; font-weight:700; margin-bottom:8px; }
+    .drop-sub { font-size:13px; color:var(--muted); margin-bottom:18px; }
+    .browse-btn { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:9px 22px; font-size:13px; font-weight:600; cursor:pointer; }
+    .browse-btn:hover { opacity:.85; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="/">
+    <div class="logo-icon">A</div>
+    <div class="logo-text">Attend<span>IQ</span></div>
+  </a>
+  <nav>
+    <a href="/">Dashboard</a>
+    <a href="/students">Students</a>
+    <a href="/scores" class="active">Scores</a>
+    <a href="/messages">Messages</a>
+  </nav>
+</header>
+
+<div class="page">
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" id="tabView"   onclick="switchTab('view')">📋 View Scores</button>
+    <button class="tab"        id="tabUpload" onclick="switchTab('upload')">📤 Upload Scores</button>
+  </div>
+
+  <!-- VIEW TAB -->
+  <div id="viewTab">
+  <!-- SELECTOR -->
+  <div class="selector">
+    <div class="selector-title">Select Test to View</div>
+    <div class="selector-row">
+      <div class="sel-group">
+        <label>Class</label>
+        <select id="sClass" onchange="onClassChange()">
+          <option value="">— Select class —</option>
+        </select>
+      </div>
+      <div class="sel-group">
+        <label>Subject</label>
+        <select id="sSubject" onchange="onSubjectChange()" disabled>
+          <option value="">— Select subject —</option>
+        </select>
+      </div>
+      <div class="sel-group">
+        <label>Test</label>
+        <select id="sTest" disabled>
+          <option value="">— Select test —</option>
+        </select>
+      </div>
+      <button class="load-btn" id="loadBtn" onclick="loadScores()" disabled>View Scores</button>
+    </div>
+  </div>
+
+  <!-- RESULTS (hidden until loaded) -->
+  <div id="resultsSection" style="display:none">
+    <div class="results-header">
+      <div>
+        <div class="results-title" id="resultsTitle"></div>
+        <div class="results-sub" id="resultsSub"></div>
+      </div>
+      <div class="pills" id="summaryPills"></div>
+    </div>
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;flex-wrap:wrap">
+      <div class="search-wrap">
+        <input type="text" id="nameSearch" placeholder="Search student name…" oninput="applySearch()" />
+      </div>
+      <span style="font-size:12px;color:var(--muted)" id="searchCount"></span>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:40px">#</th>
+              <th onclick="sortBy('student_name')">Student <span id="sort-student_name">↕</span></th>
+              <th onclick="sortBy('roll_number')">Roll <span id="sort-roll_number">↕</span></th>
+              <th onclick="sortBy('marks_obtained')">Score <span id="sort-marks_obtained">↕</span></th>
+              <th onclick="sortBy('pct')">% <span id="sort-pct">↕</span></th>
+              <th onclick="sortBy('grade')">Grade <span id="sort-grade">↕</span></th>
+            </tr>
+          </thead>
+          <tbody id="scoreTable"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLACEHOLDER -->
+  <div class="placeholder" id="placeholder">
+    <div class="placeholder-icon">📋</div>
+    <div class="placeholder-text">Select a class, subject and test above to view scores</div>
+  </div>
+  </div><!-- /viewTab -->
+
+  <!-- UPLOAD TAB -->
+  <div id="uploadTab" style="display:none">
+
+    <!-- DROP ZONE -->
+    <div id="uploadDrop">
+      <div class="drop-zone" id="dropZone">
+        <div class="drop-icon">📊</div>
+        <div class="drop-title">Drop your Excel file here</div>
+        <div class="drop-sub">Supports .xlsx and .xls</div>
+        <button class="browse-btn" onclick="document.getElementById('fileInput').click()">Browse file</button>
+        <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleFile(this.files[0])" style="display:none" />
+      </div>
+
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;margin-top:16px">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Required Excel columns</div>
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--surface2)">
+            <th style="text-align:left;padding:6px 10px;color:var(--muted);font-weight:700">Column</th>
+            <th style="text-align:left;padding:6px 10px;color:var(--muted);font-weight:700">Format</th>
+            <th style="text-align:left;padding:6px 10px;color:var(--muted);font-weight:700">Example</th>
+          </tr></thead>
+          <tbody>
+            <tr><td style="padding:6px 10px;color:var(--accent2);font-weight:600;font-family:monospace;border-top:1px solid var(--border)">student_id <span style="color:var(--danger)">*</span></td><td style="padding:6px 10px;border-top:1px solid var(--border)">AttendIQ ID</td><td style="padding:6px 10px;border-top:1px solid var(--border);color:var(--muted)">AQ-BFC-2026-0041</td></tr>
+            <tr><td style="padding:6px 10px;color:var(--accent2);font-weight:600;font-family:monospace;border-top:1px solid var(--border)">subject <span style="color:var(--danger)">*</span></td><td style="padding:6px 10px;border-top:1px solid var(--border)">Text</td><td style="padding:6px 10px;border-top:1px solid var(--border);color:var(--muted)">Mathematics</td></tr>
+            <tr><td style="padding:6px 10px;color:var(--accent2);font-weight:600;font-family:monospace;border-top:1px solid var(--border)">test_name <span style="color:var(--danger)">*</span></td><td style="padding:6px 10px;border-top:1px solid var(--border)">Text</td><td style="padding:6px 10px;border-top:1px solid var(--border);color:var(--muted)">Unit Test 1</td></tr>
+            <tr><td style="padding:6px 10px;color:var(--accent2);font-weight:600;font-family:monospace;border-top:1px solid var(--border)">test_date <span style="color:var(--danger)">*</span></td><td style="padding:6px 10px;border-top:1px solid var(--border)">YYYY-MM-DD</td><td style="padding:6px 10px;border-top:1px solid var(--border);color:var(--muted)">2026-05-15</td></tr>
+            <tr><td style="padding:6px 10px;color:var(--accent2);font-weight:600;font-family:monospace;border-top:1px solid var(--border)">marks_obtained <span style="color:var(--danger)">*</span></td><td style="padding:6px 10px;border-top:1px solid var(--border)">Number</td><td style="padding:6px 10px;border-top:1px solid var(--border);color:var(--muted)">42</td></tr>
+            <tr><td style="padding:6px 10px;color:var(--accent2);font-weight:600;font-family:monospace;border-top:1px solid var(--border)">total_marks <span style="color:var(--danger)">*</span></td><td style="padding:6px 10px;border-top:1px solid var(--border)">Number</td><td style="padding:6px 10px;border-top:1px solid var(--border);color:var(--muted)">50</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- PREVIEW -->
+    <div id="uploadPreview" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-size:15px;font-weight:700" id="previewFileName"></div>
+        <button onclick="resetUpload()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:6px 14px;font-size:12px;cursor:pointer">← Change file</button>
+      </div>
+      <div style="display:flex;gap:12px;margin-bottom:14px">
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 18px"><strong id="pValid" style="font-size:20px;font-weight:800;color:var(--green);display:block">0</strong><span style="font-size:11px;color:var(--muted)">Valid rows</span></div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 18px"><strong id="pErrors" style="font-size:20px;font-weight:800;color:var(--danger);display:block">0</strong><span style="font-size:11px;color:var(--muted)">Row errors</span></div>
+      </div>
+      <div id="pErrorList" style="display:none;background:#2d1010;border:1px solid var(--danger);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#f87171"></div>
+      <div style="overflow-x:auto;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);max-height:320px;overflow-y:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr>
+            <th style="background:var(--surface2);text-align:left;padding:9px 14px;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap">Student ID</th>
+            <th style="background:var(--surface2);text-align:left;padding:9px 14px;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Subject</th>
+            <th style="background:var(--surface2);text-align:left;padding:9px 14px;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Test</th>
+            <th style="background:var(--surface2);text-align:left;padding:9px 14px;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Date</th>
+            <th style="background:var(--surface2);text-align:left;padding:9px 14px;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Score</th>
+            <th style="background:var(--surface2);text-align:left;padding:9px 14px;color:var(--muted);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em">Grade</th>
+          </tr></thead>
+          <tbody id="previewTable"></tbody>
+        </table>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end">
+        <button onclick="resetUpload()" style="background:var(--surface2);border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:9px 20px;font-size:13px;cursor:pointer">Cancel</button>
+        <button id="confirmImportBtn" onclick="confirmImport()" style="background:var(--accent);border:none;color:#fff;border-radius:8px;padding:9px 24px;font-size:13px;font-weight:600;cursor:pointer">Import to database</button>
+      </div>
+    </div>
+
+    <!-- SUCCESS -->
+    <div id="uploadSuccess" style="display:none;background:#0f2e1a;border:1px solid var(--green);border-radius:var(--radius);padding:40px;text-align:center">
+      <div style="font-size:48px;margin-bottom:12px">✅</div>
+      <div style="font-size:18px;font-weight:700;color:var(--green);margin-bottom:8px" id="successMsg"></div>
+      <div style="font-size:13px;color:var(--muted)" id="successDetail"></div>
+      <button onclick="resetUpload()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 20px;font-size:13px;cursor:pointer;margin-top:20px">Upload another file</button>
+    </div>
+
+  </div><!-- /uploadTab -->
+
+</div>
+
+<script>
+let loadedRows = [];
+let sortCol = 'marks_obtained', sortDir = -1;
+const gradeCls   = { 'A+':'grade-Ap','A':'grade-A','B':'grade-B','C':'grade-C','D':'grade-D','F':'grade-F' };
+const gradeOrder = { 'A+':0,'A':1,'B':2,'C':3,'D':4,'F':5 };
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+async function init() {
+  const [classesList, filtersData] = await Promise.all([
+    fetch('/api/classes-list').then(r => r.json()),
+    fetch('/api/scores/filters').then(r => r.json()),
+  ]);
+
+  const sClass = document.getElementById('sClass');
+  classesList.forEach(c => {
+    const o = document.createElement('option');
+    o.value       = c.id;
+    o.textContent = `Std ${c.standard} – Div ${c.division}`;
+    sClass.appendChild(o);
+  });
+
+  // Store subjects & tests globally for cascading
+  window._subjects   = filtersData.subjects;
+  window._test_names = filtersData.test_names;
+}
+
+function onClassChange() {
+  const cls = document.getElementById('sClass').value;
+  const sSubject = document.getElementById('sSubject');
+  const sTest    = document.getElementById('sTest');
+
+  sSubject.innerHTML = '<option value="">— Select subject —</option>';
+  sTest.innerHTML    = '<option value="">— Select test —</option>';
+  sSubject.disabled  = !cls;
+  sTest.disabled     = true;
+  document.getElementById('loadBtn').disabled = true;
+
+  if (!cls) return;
+  window._subjects.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s; o.textContent = s;
+    sSubject.appendChild(o);
+  });
+}
+
+function onSubjectChange() {
+  const subject = document.getElementById('sSubject').value;
+  const sTest   = document.getElementById('sTest');
+
+  sTest.innerHTML = '<option value="">— Select test —</option>';
+  sTest.disabled  = !subject;
+  document.getElementById('loadBtn').disabled = true;
+
+  if (!subject) return;
+  window._test_names.forEach(t => {
+    const o = document.createElement('option');
+    o.value = t; o.textContent = t;
+    sTest.appendChild(o);
+  });
+  sTest.addEventListener('change', () => {
+    document.getElementById('loadBtn').disabled = !sTest.value;
+  }, { once: false });
+}
+
+// ── LOAD ──────────────────────────────────────────────────────────────────
+async function loadScores() {
+  const cls     = document.getElementById('sClass').value;
+  const subject = document.getElementById('sSubject').value;
+  const test    = document.getElementById('sTest').value;
+  if (!cls || !subject || !test) return;
+
+  const btn = document.getElementById('loadBtn');
+  btn.textContent = 'Loading…'; btn.disabled = true;
+
+  const params = new URLSearchParams({ class_id: cls, subject, test_name: test });
+  const rows   = await fetch('/api/scores/all?' + params).then(r => r.json());
+
+  // Attach rank info
+  loadedRows = rows.map(r => ({ ...r, pct: Math.round((r.marks_obtained / r.total_marks) * 100) }));
+
+  const classText = document.getElementById('sClass').selectedOptions[0].text;
+  document.getElementById('resultsTitle').textContent = `${subject} — ${test}`;
+  document.getElementById('resultsSub').textContent   = `${classText} · ${rows.length} student${rows.length !== 1 ? 's' : ''}`;
+
+  document.getElementById('resultsSection').style.display = 'block';
+  document.getElementById('placeholder').style.display    = 'none';
+  document.getElementById('nameSearch').value = '';
+
+  sortCol = 'marks_obtained'; sortDir = -1;
+  applySearch();
+
+  btn.textContent = 'View Scores'; btn.disabled = false;
+}
+
+// ── SEARCH + RENDER ───────────────────────────────────────────────────────
+function applySearch() {
+  const q = document.getElementById('nameSearch').value.toLowerCase();
+  const visible = q
+    ? loadedRows.filter(r => r.student_name.toLowerCase().includes(q))
+    : loadedRows;
+  renderTable(visible);
+}
+
+function renderTable(rows) {
+  // Sort
+  rows = [...rows].sort((a, b) => {
+    let av = a[sortCol], bv = b[sortCol];
+    if (sortCol === 'grade') { av = gradeOrder[av] ?? 9; bv = gradeOrder[bv] ?? 9; }
+    if (typeof av === 'string') return av.localeCompare(bv) * sortDir;
+    return (av - bv) * sortDir;
+  });
+
+  // Update sort arrows
+  document.querySelectorAll('thead th span').forEach(el => { el.textContent = '↕'; el.style.opacity = '.4'; });
+  const icon = document.getElementById('sort-' + sortCol);
+  if (icon) { icon.textContent = sortDir === 1 ? '↑' : '↓'; icon.style.opacity = '1'; }
+
+  document.getElementById('searchCount').textContent =
+    rows.length !== loadedRows.length ? `${rows.length} of ${loadedRows.length} students` : '';
+
+  if (!rows.length) {
+    document.getElementById('scoreTable').innerHTML =
+      `<tr><td colspan="6" class="empty">No students match "${document.getElementById('nameSearch').value}"</td></tr>`;
+    updateSummary([]);
+    return;
+  }
+
+  document.getElementById('scoreTable').innerHTML = rows.map((r, i) => {
+    const color = r.pct >= 75 ? '#22c55e' : r.pct >= 50 ? '#fbbf24' : '#ef4444';
+    const rankCls = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+    return `<tr>
+      <td><span class="rank ${rankCls}">${i + 1}</span></td>
+      <td>
+        <div style="font-weight:600">${r.student_name}</div>
+        <div style="font-size:11px;color:var(--muted)">${r.student_id}</div>
+      </td>
+      <td style="color:var(--muted)">${r.roll_number ?? '—'}</td>
+      <td>
+        <span style="font-weight:700">${r.marks_obtained}</span><span style="color:var(--muted)">/${r.total_marks}</span>
+        <div class="bar"><div class="bar-fill" style="width:${r.pct}%;background:${color}"></div></div>
+      </td>
+      <td style="color:${color};font-weight:700">${r.pct}%</td>
+      <td><span class="grade ${gradeCls[r.grade] || ''}">${r.grade}</span></td>
+    </tr>`;
+  }).join('');
+
+  updateSummary(rows);
+}
+
+function updateSummary(rows) {
+  if (!rows.length) { document.getElementById('summaryPills').innerHTML = ''; return; }
+  const pcts  = rows.map(r => r.pct);
+  const avg   = (pcts.reduce((a,b)=>a+b,0)/pcts.length).toFixed(1);
+  const fails = rows.filter(r => r.grade === 'F').length;
+  const pass  = rows.length - fails;
+  document.getElementById('summaryPills').innerHTML = `
+    <div class="pill teal"><div class="pill-val">${avg}%</div><div class="pill-lbl">Class avg</div></div>
+    <div class="pill green"><div class="pill-val">${Math.max(...pcts)}%</div><div class="pill-lbl">Highest</div></div>
+    <div class="pill amber"><div class="pill-val">${Math.min(...pcts)}%</div><div class="pill-lbl">Lowest</div></div>
+    <div class="pill purple"><div class="pill-val">${pass}</div><div class="pill-lbl">Passed</div></div>
+    <div class="pill red"><div class="pill-val">${fails}</div><div class="pill-lbl">Failed</div></div>
+  `;
+}
+
+function sortBy(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = col === 'student_name' ? 1 : -1; }
+  applySearch();
+}
+
+// ── sTest change listener ─────────────────────────────────────────────────
+document.getElementById('sTest').addEventListener('change', () => {
+  document.getElementById('loadBtn').disabled = !document.getElementById('sTest').value;
+});
+
+init();
+
+// ── TAB SWITCHING ─────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('viewTab').style.display   = tab === 'view'   ? 'block' : 'none';
+  document.getElementById('uploadTab').style.display = tab === 'upload' ? 'block' : 'none';
+  document.getElementById('tabView').classList.toggle('active',   tab === 'view');
+  document.getElementById('tabUpload').classList.toggle('active', tab === 'upload');
+}
+
+// ── UPLOAD ────────────────────────────────────────────────────────────────
+const gradeCls2 = { 'A+':'A+','A':'A','B':'B','C':'C','D':'D','F':'F' };
+function gradeFromPct(m, t) {
+  const p = (m/t)*100;
+  return p>=90?'A+':p>=80?'A':p>=70?'B':p>=60?'C':p>=50?'D':'F';
+}
+
+let uploadFile = null;
+
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); });
+
+async function handleFile(file) {
+  if (!file || !file.name.match(/\.xlsx?$/i)) { alert('Please upload an .xlsx or .xls file'); return; }
+  uploadFile = file;
+  document.getElementById('previewFileName').textContent = file.name;
+  document.getElementById('confirmImportBtn').disabled = true;
+  document.getElementById('confirmImportBtn').textContent = 'Parsing…';
+
+  const fd = new FormData(); fd.append('file', file);
+  const res  = await fetch('/api/upload/scores/preview', { method:'POST', body:fd });
+  const data = await res.json();
+  if (!res.ok) { alert(data.detail || 'Parse failed'); return; }
+
+  document.getElementById('pValid').textContent  = data.valid;
+  document.getElementById('pErrors').textContent = data.errors.length;
+
+  const errDiv = document.getElementById('pErrorList');
+  if (data.errors.length) {
+    errDiv.style.display = 'block';
+    errDiv.innerHTML = data.errors.map(e => `Row ${e.row}: ${e.errors.join(', ')}`).join('<br>');
+  } else { errDiv.style.display = 'none'; }
+
+  document.getElementById('previewTable').innerHTML = data.rows.map(r => {
+    const g = gradeFromPct(r.marks_obtained, r.total_marks);
+    return `<tr style="border-top:1px solid var(--border)">
+      <td style="padding:8px 14px;color:var(--muted);font-size:11px">${r.student_id}</td>
+      <td style="padding:8px 14px">${r.subject}</td>
+      <td style="padding:8px 14px">${r.test_name}</td>
+      <td style="padding:8px 14px;color:var(--muted)">${r.test_date}</td>
+      <td style="padding:8px 14px"><strong>${r.marks_obtained}</strong>/${r.total_marks}</td>
+      <td style="padding:8px 14px"><strong>${g}</strong></td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('uploadDrop').style.display    = 'none';
+  document.getElementById('uploadPreview').style.display = 'block';
+  document.getElementById('confirmImportBtn').disabled    = data.valid === 0;
+  document.getElementById('confirmImportBtn').textContent = 'Import to database';
+}
+
+async function confirmImport() {
+  const btn = document.getElementById('confirmImportBtn');
+  btn.disabled = true; btn.textContent = 'Importing…';
+  const fd = new FormData(); fd.append('file', uploadFile);
+  const res  = await fetch('/api/upload/scores/confirm', { method:'POST', body:fd });
+  const data = await res.json();
+  if (!res.ok) { alert(data.detail || 'Import failed'); btn.disabled=false; btn.textContent='Import to database'; return; }
+  document.getElementById('uploadPreview').style.display = 'none';
+  document.getElementById('uploadSuccess').style.display = 'block';
+  document.getElementById('successMsg').textContent    = `${data.inserted} scores imported`;
+  document.getElementById('successDetail').textContent = `${data.skipped_unknown_ids} skipped (unknown IDs) · ${data.parse_errors} parse errors`;
+}
+
+function resetUpload() {
+  uploadFile = null;
+  document.getElementById('fileInput').value = '';
+  document.getElementById('uploadDrop').style.display    = 'block';
+  document.getElementById('uploadPreview').style.display = 'none';
+  document.getElementById('uploadSuccess').style.display = 'none';
+}
+</script>
+</body>
+</html>

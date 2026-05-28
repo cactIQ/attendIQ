@@ -18,6 +18,15 @@ class StudentUpdate(BaseModel):
     is_active:        Optional[bool] = None
 
 
+class StudentCreate(BaseModel):
+    class_id:         int
+    name:             str
+    gender:           str
+    date_of_birth:    Optional[str]  = None
+    whatsapp_number:  Optional[str]  = None
+    email:            Optional[str]  = None
+
+
 @router.get("/students")
 async def list_students(class_id: Optional[int] = None, search: Optional[str] = None):
     pool = await get_pool()
@@ -26,7 +35,7 @@ async def list_students(class_id: Optional[int] = None, search: Optional[str] = 
             SELECT
                 s.id, s.name, s.gender, s.roll_number,
                 s.whatsapp_number, s.email, s.date_of_birth,
-                s.joining_date, s.is_active,
+                s.joining_date, s.is_active, s.class_id,
                 c.standard, c.division, c.class_teacher
             FROM students s
             JOIN classes c ON c.id = s.class_id
@@ -43,6 +52,48 @@ async def list_students(class_id: Optional[int] = None, search: Optional[str] = 
         }
         for r in rows
     ]
+
+
+@router.post("/students")
+async def create_student(body: StudentCreate):
+    pool = await get_pool()
+    INSTITUTE = os.getenv("INSTITUTE_CODE", "BFC")
+
+    async with pool.acquire() as conn:
+        # Verify class exists
+        cls = await conn.fetchrow(
+            "SELECT id FROM classes WHERE id = $1 AND academic_year = $2", body.class_id, YEAR
+        )
+        if not cls:
+            raise HTTPException(status_code=400, detail="Class not found")
+
+        # Next sequential roll number for this class
+        roll = await conn.fetchval(
+            "SELECT COALESCE(MAX(roll_number), 0) + 1 FROM students WHERE class_id = $1 AND is_deleted = FALSE",
+            body.class_id
+        )
+
+        # Next sequential institute-wide ID number for this year
+        prefix = f"AQ-{INSTITUTE}-{YEAR}-"
+        last_num = await conn.fetchval(
+            "SELECT COALESCE(MAX(CAST(SUBSTRING(id FROM '[0-9]+$') AS INT)), 0) FROM students WHERE id LIKE $1",
+            prefix + "%"
+        )
+        student_id = f"{prefix}{str(last_num + 1).zfill(4)}"
+
+        dob = date.fromisoformat(body.date_of_birth) if body.date_of_birth else None
+
+        await conn.execute("""
+            INSERT INTO students (id, class_id, roll_number, name, gender, date_of_birth, whatsapp_number, email, joining_date)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_DATE)
+        """, student_id, body.class_id, roll, body.name, body.gender, dob, body.whatsapp_number, body.email)
+
+        await conn.execute("""
+            INSERT INTO change_log (table_name, record_id, action, new_values, changed_by, note)
+            VALUES ('students', $1, 'insert', $2::jsonb, 'chat', 'Added via dashboard')
+        """, student_id, json.dumps({"name": body.name, "class_id": body.class_id, "roll_number": roll}))
+
+    return {"ok": True, "student_id": student_id, "roll_number": roll}
 
 
 @router.get("/students/{student_id}")

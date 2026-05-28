@@ -94,7 +94,7 @@
     }
     .section-title:first-child { margin-top: 0; }
 
-    /* ── STAT CARDS ── */
+/* ── STAT CARDS ── */
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
@@ -270,7 +270,8 @@
   <nav style="display:flex;gap:4px">
     <a href="/" style="padding:6px 14px;border-radius:8px;text-decoration:none;background:#22263a;color:#e2e8f0;font-size:13px;font-weight:500">Dashboard</a>
     <a href="/students" style="padding:6px 14px;border-radius:8px;text-decoration:none;color:#8892a4;font-size:13px;font-weight:500">Students</a>
-    <a href="/upload" style="padding:6px 14px;border-radius:8px;text-decoration:none;color:#8892a4;font-size:13px;font-weight:500">Upload Scores</a>
+    <a href="/scores" style="padding:6px 14px;border-radius:8px;text-decoration:none;color:#8892a4;font-size:13px;font-weight:500">Scores</a>
+    <a href="/messages" style="padding:6px 14px;border-radius:8px;text-decoration:none;color:#8892a4;font-size:13px;font-weight:500">Messages</a>
   </nav>
   <div class="header-right">
     <div class="institute-badge">Institute: <strong>BFC — Bright Future Coaching</strong> &nbsp;|&nbsp; AY 2026</div>
@@ -282,8 +283,17 @@
 
 <div class="page">
 
+  <!-- ── CLASS FILTER ── -->
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+    <span style="font-size:12px;color:var(--muted);font-weight:600">Filter by class:</span>
+    <select id="dashClassFilter" onchange="applyDashFilter()" style="background:var(--surface);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 14px;font-size:13px;outline:none;cursor:pointer;transition:border-color .15s">
+      <option value="">All classes</option>
+    </select>
+    <button onclick="document.getElementById('dashClassFilter').value='';applyDashFilter()" style="background:none;border:1px solid var(--border);color:var(--muted);border-radius:8px;padding:7px 12px;font-size:12px;cursor:pointer" id="dashResetBtn" style="display:none">✕ Reset</button>
+  </div>
+
   <!-- ── STAT CARDS ── -->
-  <div class="section-title">Overview — May 2026</div>
+  <div class="section-title" id="overviewLabel">Overview — May 2026</div>
   <div class="stats-grid">
     <div class="stat-card purple">
       <div class="stat-label">Active Students</div>
@@ -339,7 +349,7 @@
     </div>
   </div>
 
-  <!-- ── CLASS TABLE ── -->
+<!-- ── CLASS TABLE ── -->
   <div class="section-title">Class-wise Performance</div>
   <div class="card">
     <div class="card-header">
@@ -367,48 +377,6 @@
   </div>
 
   <!-- ── STUDENT SCORES + MESSAGE LOG ── -->
-  <div class="section-title">Recent Activity</div>
-  <div class="two-col">
-
-    <!-- SCORE TABLE -->
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <div class="card-title">Latest Test Scores</div>
-          <div class="card-sub">Most recent per student</div>
-        </div>
-        <span class="badge badge-purple">Unit Test 3</span>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Student ID</th>
-              <th>Name</th>
-              <th>Subject</th>
-              <th>Score</th>
-              <th>Grade</th>
-            </tr>
-          </thead>
-          <tbody id="scoreTable"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- MESSAGE LOG -->
-    <div class="card">
-      <div class="card-header">
-        <div>
-          <div class="card-title">WhatsApp Message Log</div>
-          <div class="card-sub">message_log · May 2026</div>
-        </div>
-        <span class="badge badge-green">Live</span>
-      </div>
-      <div id="msgLog"></div>
-    </div>
-
-  </div>
-
   <!-- ── AUTOMATION PANEL + ABSENCE ALERTS ── -->
   <div class="section-title">Automation &amp; Alerts</div>
   <div class="two-col">
@@ -551,16 +519,17 @@ function renderOverview(d) {
 }
 
 let attChart, gradeChart;
+let _rawClasses = [], _rawAlerts = [];
 
 function initCharts() {
   attChart = new Chart(document.getElementById('attendanceChart'), {
     type: 'bar',
     data: {
-      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'],
+      labels: [],
       datasets: [
-        { label: 'Present', data: [86, 82, 85, 81, 84], backgroundColor: '#22c55e99', borderRadius: 5 },
-        { label: 'Late',    data: [5,  7,  4,  6,  5 ], backgroundColor: '#f59e0b99', borderRadius: 5 },
-        { label: 'Absent',  data: [9,  11, 11, 13, 11], backgroundColor: '#ef444499', borderRadius: 5 },
+        { label: 'Present', data: [], backgroundColor: '#22c55e99', borderRadius: 5 },
+        { label: 'Late',    data: [], backgroundColor: '#f59e0b99', borderRadius: 5 },
+        { label: 'Absent',  data: [], backgroundColor: '#ef444499', borderRadius: 5 },
       ]
     },
     options: {
@@ -583,6 +552,14 @@ function initCharts() {
   });
 }
 
+function updateAttChart(trend) {
+  attChart.data.labels              = trend.map(r => r.month);
+  attChart.data.datasets[0].data   = trend.map(r => r.present_pct);
+  attChart.data.datasets[1].data   = trend.map(r => r.late_pct);
+  attChart.data.datasets[2].data   = trend.map(r => r.absent_pct);
+  attChart.update();
+}
+
 function updateGradeChart(scores) {
   const counts = { 'A+':0, 'A':0, 'B':0, 'C':0, 'D':0, 'F':0 };
   scores.forEach(s => { if (counts[s.grade] !== undefined) counts[s.grade]++; });
@@ -590,21 +567,66 @@ function updateGradeChart(scores) {
   gradeChart.update();
 }
 
+async function applyDashFilter() {
+  const cls = document.getElementById('dashClassFilter').value;
+  const sel = document.getElementById('dashClassFilter');
+  const label = cls ? sel.selectedOptions[0].text : null;
+
+  document.getElementById('overviewLabel').textContent =
+    label ? `Overview — ${label} · May 2026` : 'Overview — May 2026';
+
+  // Re-fetch overview + trend with class filter
+  const params = cls ? '?class_id=' + cls : '';
+  const [overview, trend] = await Promise.all([
+    fetch('/api/overview' + params).then(r => r.json()),
+    fetch('/api/attendance/trend' + params).then(r => r.json()),
+  ]);
+
+  renderOverview(overview);
+  updateAttChart(trend);
+
+  // Filter class table + alerts client-side
+  const filteredClasses = cls
+    ? _rawClasses.filter(c => String(c.id) === cls)
+    : _rawClasses;
+
+  const filteredAlerts = cls
+    ? _rawAlerts.filter(a => {
+        const match = _rawClasses.find(c => String(c.id) === cls);
+        return match && a.standard === match.standard && a.division === match.division;
+      })
+    : _rawAlerts;
+
+  renderClasses(filteredClasses);
+  renderAlerts(filteredAlerts);
+}
+
 async function loadAll() {
   try {
-    const [overview, classes, scores, messages, alerts] = await Promise.all([
+    const [overview, classes, scores, alerts, trend] = await Promise.all([
       fetch('/api/overview').then(r => r.json()),
       fetch('/api/classes').then(r => r.json()),
       fetch('/api/scores').then(r => r.json()),
-      fetch('/api/messages').then(r => r.json()),
       fetch('/api/alerts').then(r => r.json()),
+      fetch('/api/attendance/trend').then(r => r.json()),
     ]);
+    _rawClasses = classes;
+    _rawAlerts  = alerts;
+
+    // Populate class filter
+    const sel = document.getElementById('dashClassFilter');
+    classes.forEach(c => {
+      const o = document.createElement('option');
+      o.value       = c.id;
+      o.textContent = `Std ${c.standard} – Div ${c.division}`;
+      sel.appendChild(o);
+    });
+
     renderOverview(overview);
     renderClasses(classes);
-    renderScores(scores);
-    renderMessages(messages);
     renderAlerts(alerts);
     updateGradeChart(scores);
+    updateAttChart(trend);
   } catch (e) {
     console.error('API fetch failed:', e);
     document.querySelector('.page').insertAdjacentHTML('afterbegin',

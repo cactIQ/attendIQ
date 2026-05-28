@@ -50,3 +50,11 @@ async def students_page():
 @app.get("/upload")
 async def upload_page():
     return FileResponse(os.path.join(DASH_DIR, "upload.html"))
+
+@app.get("/scores")
+async def scores_page():
+    return FileResponse(os.path.join(DASH_DIR, "scores.html"))
+
+@app.get("/messages")
+async def messages_page():
+    return FileResponse(os.path.join(DASH_DIR, "messages.html"))

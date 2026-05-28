@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AttendIQ — WhatsApp Messages</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#0f1117; --surface:#1a1d27; --surface2:#22263a; --border:#2e3250;
+      --accent:#6c63ff; --accent2:#00d4aa; --warn:#f59e0b; --danger:#ef4444;
+      --text:#e2e8f0; --muted:#8892a4; --green:#22c55e; --wa:#25d366; --radius:12px;
+    }
+    body { background:var(--bg); color:var(--text); font-family:'Segoe UI',system-ui,sans-serif; font-size:14px; min-height:100vh; }
+
+    header { background:var(--surface); border-bottom:1px solid var(--border); padding:0 28px; height:60px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+    .logo { display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--text); }
+    .logo-icon { width:34px; height:34px; border-radius:8px; background:var(--accent); display:flex; align-items:center; justify-content:center; font-weight:800; font-size:16px; color:#fff; }
+    .logo-text { font-weight:700; font-size:18px; }
+    .logo-text span { color:var(--accent); }
+    nav { display:flex; gap:4px; }
+    nav a { padding:6px 14px; border-radius:8px; text-decoration:none; color:var(--muted); font-size:13px; font-weight:500; transition:background .15s,color .15s; }
+    nav a:hover, nav a.active { background:var(--surface2); color:var(--text); }
+    .wa-btn { background:var(--wa); color:#fff; border:none; border-radius:8px; padding:8px 18px; font-size:13px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:7px; transition:opacity .15s; }
+    .wa-btn:hover { opacity:.88; }
+
+    .page { padding:24px 28px; max-width:1200px; margin:0 auto; }
+
+    /* STAT CARDS */
+    .stats-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:20px; }
+    @media(max-width:900px){ .stats-grid { grid-template-columns:repeat(3,1fr); } }
+    .stat { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px 18px; position:relative; overflow:hidden; }
+    .stat::before { content:''; position:absolute; top:0;left:0;right:0; height:3px; border-radius:var(--radius) var(--radius) 0 0; }
+    .stat.total::before   { background:var(--accent); }
+    .stat.sent::before    { background:var(--muted); }
+    .stat.delivered::before { background:var(--accent2); }
+    .stat.read::before    { background:var(--green); }
+    .stat.failed::before  { background:var(--danger); }
+    .stat-val { font-size:28px; font-weight:800; margin:4px 0 2px; }
+    .stat.total .stat-val   { color:var(--accent); }
+    .stat.sent .stat-val    { color:var(--muted); }
+    .stat.delivered .stat-val { color:var(--accent2); }
+    .stat.read .stat-val    { color:var(--green); }
+    .stat.failed .stat-val  { color:var(--danger); }
+    .stat-lbl { font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.05em; }
+
+    /* FILTERS */
+    .filter-bar { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px 18px; margin-bottom:16px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .filter-bar select, .filter-bar input[type=month] {
+      background:var(--surface2); border:1px solid var(--border); color:var(--text);
+      border-radius:8px; padding:7px 12px; font-size:13px; outline:none; transition:border-color .15s; cursor:pointer;
+    }
+    .filter-bar select:focus, .filter-bar input:focus { border-color:var(--accent); }
+    .filter-bar select option { background:var(--surface2); }
+    .reset-btn { background:none; border:1px solid var(--border); color:var(--muted); border-radius:8px; padding:7px 14px; font-size:12px; cursor:pointer; }
+    .reset-btn:hover { color:var(--text); }
+
+    /* TABLE */
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; }
+    thead th { background:var(--surface2); text-align:left; padding:11px 16px; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); white-space:nowrap; }
+    tbody tr { border-top:1px solid var(--border); transition:background .1s; }
+    tbody tr:hover { background:var(--surface2); }
+    tbody td { padding:11px 16px; font-size:13px; }
+
+    .type-badge { display:inline-block; border-radius:6px; padding:2px 9px; font-size:11px; font-weight:600; }
+    .type-monthly_report  { background:#1e1b40; color:#818cf8; }
+    .type-absence_alert   { background:#2d2006; color:#fbbf24; }
+    .type-score_update    { background:#0d2535; color:#38bdf8; }
+    .type-fee_reminder    { background:#0f2e1a; color:#22c55e; }
+    .type-custom          { background:#22263a; color:#8892a4; }
+
+    .status-badge { display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; }
+    .dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+    .status-pending   .dot { background:var(--muted); }
+    .status-sent      .dot { background:var(--muted); }
+    .status-delivered .dot { background:var(--accent2); }
+    .status-read      .dot { background:var(--green); box-shadow:0 0 5px var(--green); }
+    .status-failed    .dot { background:var(--danger); }
+    .status-pending   { color:var(--muted); }
+    .status-sent      { color:var(--muted); }
+    .status-delivered { color:var(--accent2); }
+    .status-read      { color:var(--green); }
+    .status-failed    { color:var(--danger); }
+
+    .msg-preview { max-width:260px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--muted); font-size:12px; }
+    .empty { text-align:center; padding:60px; color:var(--muted); }
+
+    /* MODAL */
+    .backdrop { position:fixed; inset:0; background:#00000088; display:none; align-items:center; justify-content:center; z-index:200; backdrop-filter:blur(2px); }
+    .backdrop.open { display:flex; }
+    .modal { background:var(--surface); border:1px solid var(--border); border-radius:16px; width:100%; max-width:520px; padding:28px; position:relative; max-height:90vh; overflow-y:auto; }
+    .modal-title { font-size:16px; font-weight:700; margin-bottom:4px; }
+    .modal-sub { font-size:12px; color:var(--muted); margin-bottom:22px; }
+    .close-btn { position:absolute; top:18px; right:18px; background:var(--surface2); border:none; color:var(--muted); border-radius:6px; width:28px; height:28px; cursor:pointer; font-size:16px; }
+    .close-btn:hover { color:var(--text); }
+
+    .form-group { margin-bottom:16px; }
+    .form-group label { display:block; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-bottom:6px; }
+    .form-group input, .form-group select, .form-group textarea {
+      width:100%; background:var(--surface2); border:1px solid var(--border); color:var(--text);
+      border-radius:8px; padding:9px 12px; font-size:13px; outline:none; transition:border-color .15s; font-family:inherit;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color:var(--accent); }
+    .form-group textarea { resize:vertical; min-height:100px; }
+    .form-group select option { background:var(--surface2); }
+
+    .student-result { background:var(--surface2); border:1px solid var(--border); border-radius:8px; margin-top:4px; display:none; }
+    .student-item { padding:10px 14px; cursor:pointer; font-size:13px; border-bottom:1px solid var(--border); }
+    .student-item:last-child { border-bottom:none; }
+    .student-item:hover { background:var(--border); }
+    .student-item small { color:var(--muted); }
+
+    .templates { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+    .tpl-btn { background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:6px; padding:4px 10px; font-size:11px; cursor:pointer; transition:color .15s; }
+    .tpl-btn:hover { color:var(--text); border-color:var(--accent); }
+
+    .modal-footer { display:flex; gap:10px; justify-content:flex-end; margin-top:20px; }
+    .btn-cancel { background:var(--surface2); border:1px solid var(--border); color:var(--muted); border-radius:8px; padding:9px 20px; font-size:13px; cursor:pointer; }
+    .btn-cancel:hover { color:var(--text); }
+    .btn-send { background:var(--wa); border:none; color:#fff; border-radius:8px; padding:9px 24px; font-size:13px; font-weight:600; cursor:pointer; transition:opacity .15s; }
+    .btn-send:hover { opacity:.85; }
+    .btn-send:disabled { opacity:.45; cursor:default; }
+
+    .toast { position:fixed; bottom:28px; right:28px; background:#1e2d1e; border:1px solid var(--green); color:var(--green); padding:12px 20px; border-radius:10px; font-size:13px; font-weight:600; display:none; z-index:300; }
+    .toast.error { background:#2d1010; border-color:var(--danger); color:var(--danger); }
+    .toast.show { display:block; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a class="logo" href="/">
+    <div class="logo-icon">A</div>
+    <div class="logo-text">Attend<span>IQ</span></div>
+  </a>
+  <nav>
+    <a href="/">Dashboard</a>
+    <a href="/students">Students</a>
+    <a href="/scores">Scores</a>
+    <a href="/messages" class="active">Messages</a>
+  </nav>
+  <button class="wa-btn" onclick="openCompose()">📱 Send Message</button>
+</header>
+
+<div class="page">
+
+  <!-- STATS -->
+  <div class="stats-grid">
+    <div class="stat total">   <div class="stat-lbl">Total</div>    <div class="stat-val" id="sTotal">—</div></div>
+    <div class="stat sent">    <div class="stat-lbl">Sent</div>     <div class="stat-val" id="sSent">—</div></div>
+    <div class="stat delivered"><div class="stat-lbl">Delivered</div><div class="stat-val" id="sDelivered">—</div></div>
+    <div class="stat read">    <div class="stat-lbl">Read</div>     <div class="stat-val" id="sRead">—</div></div>
+    <div class="stat failed">  <div class="stat-lbl">Failed</div>   <div class="stat-val" id="sFailed">—</div></div>
+  </div>
+
+  <!-- FILTERS -->
+  <div class="filter-bar">
+    <input type="month" id="fMonth" onchange="loadMessages()" />
+    <select id="fType" onchange="loadMessages()">
+      <option value="">All types</option>
+      <option value="monthly_report">Monthly Report</option>
+      <option value="absence_alert">Absence Alert</option>
+      <option value="score_update">Score Update</option>
+      <option value="fee_reminder">Fee Reminder</option>
+      <option value="custom">Custom</option>
+    </select>
+    <select id="fStatus" onchange="loadMessages()">
+      <option value="">All statuses</option>
+      <option value="pending">Pending</option>
+      <option value="sent">Sent</option>
+      <option value="delivered">Delivered</option>
+      <option value="read">Read</option>
+      <option value="failed">Failed</option>
+    </select>
+    <button class="reset-btn" onclick="resetFilters()">✕ Reset</button>
+    <span style="font-size:12px;color:var(--muted);margin-left:auto" id="rowCount"></span>
+  </div>
+
+  <!-- TABLE -->
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Parent</th>
+            <th>WhatsApp</th>
+            <th>Type</th>
+            <th>Message</th>
+            <th>Status</th>
+            <th>Month</th>
+            <th>Triggered by</th>
+          </tr>
+        </thead>
+        <tbody id="msgTable"><tr><td colspan="8" class="empty">Loading…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- COMPOSE MODAL -->
+<div class="backdrop" id="composeModal">
+  <div class="modal">
+    <button class="close-btn" onclick="closeCompose()">✕</button>
+    <div class="modal-title">📱 Send WhatsApp Message</div>
+    <div class="modal-sub">Message is logged as pending — your WhatsApp sender picks it up from the queue.</div>
+
+    <div class="form-group">
+      <label>Search Student <span style="color:var(--danger)">*</span></label>
+      <input type="text" id="cStudentSearch" placeholder="Type student name…" oninput="searchStudents()" autocomplete="off" />
+      <div class="student-result" id="studentResults"></div>
+      <input type="hidden" id="cStudentId" />
+    </div>
+
+    <div class="form-group" id="parentGroup" style="display:none">
+      <label>Parent / Recipient <span style="color:var(--danger)">*</span></label>
+      <select id="cParent" onchange="onParentChange()">
+        <option value="">— Select parent —</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Message Type <span style="color:var(--danger)">*</span></label>
+      <select id="cType" onchange="applyTemplate()">
+        <option value="custom">Custom</option>
+        <option value="monthly_report">Monthly Report</option>
+        <option value="absence_alert">Absence Alert</option>
+        <option value="score_update">Score Update</option>
+        <option value="fee_reminder">Fee Reminder</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Message <span style="color:var(--danger)">*</span></label>
+      <div class="templates">
+        <span style="font-size:11px;color:var(--muted);align-self:center">Templates:</span>
+        <button type="button" class="tpl-btn" onclick="applyTemplate('monthly_report')">Monthly Report</button>
+        <button type="button" class="tpl-btn" onclick="applyTemplate('absence_alert')">Absence Alert</button>
+        <button type="button" class="tpl-btn" onclick="applyTemplate('score_update')">Score Update</button>
+      </div>
+      <textarea id="cContent" placeholder="Type your message…" style="margin-top:8px"></textarea>
+    </div>
+
+    <div class="form-group">
+      <label>WhatsApp Number</label>
+      <input type="text" id="cNumber" placeholder="Auto-filled from parent" readonly style="color:var(--muted)" />
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeCompose()">Cancel</button>
+      <button class="btn-send" id="sendBtn" onclick="sendMessage()">Send Message</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const typeLabel = { monthly_report:'Monthly Report', absence_alert:'Absence Alert', score_update:'Score Update', fee_reminder:'Fee Reminder', custom:'Custom' };
+const typeEmoji = { monthly_report:'📊', absence_alert:'⚠️', score_update:'📝', fee_reminder:'💰', custom:'💬' };
+
+let selectedStudent = null;
+let selectedParent  = null;
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+const today = new Date();
+document.getElementById('fMonth').value = today.toISOString().slice(0,7);
+loadMessages();
+
+async function loadMessages() {
+  const month  = document.getElementById('fMonth').value;
+  const type   = document.getElementById('fType').value;
+  const status = document.getElementById('fStatus').value;
+
+  const params = new URLSearchParams();
+  if (month)  params.set('month',    month);
+  if (type)   params.set('msg_type', type);
+  if (status) params.set('status',   status);
+
+  const [msgs, stats] = await Promise.all([
+    fetch('/api/messages?' + params).then(r => r.json()),
+    fetch('/api/messages/stats' + (month ? '?month=' + month : '')).then(r => r.json()),
+  ]);
+
+  // Stats
+  document.getElementById('sTotal').textContent     = stats.total;
+  document.getElementById('sSent').textContent      = stats.sent;
+  document.getElementById('sDelivered').textContent = stats.delivered;
+  document.getElementById('sRead').textContent      = stats.read;
+  document.getElementById('sFailed').textContent    = stats.failed;
+
+  document.getElementById('rowCount').textContent = `${msgs.length} message${msgs.length !== 1 ? 's' : ''}`;
+
+  // Table
+  document.getElementById('msgTable').innerHTML = msgs.length
+    ? msgs.map(m => `
+        <tr>
+          <td><strong>${m.student_name}</strong><br><span style="font-size:11px;color:var(--muted)">${m.student_id}</span></td>
+          <td>${m.parent_name}<br><span style="font-size:11px;color:var(--muted)">${m.relation}</span></td>
+          <td style="color:var(--muted);font-size:12px">${m.whatsapp_number}</td>
+          <td><span class="type-badge type-${m.message_type}">${typeEmoji[m.message_type] || ''} ${typeLabel[m.message_type] || m.message_type}</span></td>
+          <td><div class="msg-preview" title="${m.message_content}">${m.message_content}</div></td>
+          <td><span class="status-badge status-${m.delivery_status}"><span class="dot"></span>${m.delivery_status}</span>${m.failure_reason ? `<div style="font-size:11px;color:var(--danger);margin-top:2px">${m.failure_reason}</div>` : ''}</td>
+          <td style="color:var(--muted)">${m.month_year}</td>
+          <td style="color:var(--muted);font-size:12px">${m.triggered_by}</td>
+        </tr>
+      `).join('')
+    : `<tr><td colspan="8" class="empty">No messages found for this period.</td></tr>`;
+}
+
+function resetFilters() {
+  document.getElementById('fType').value = '';
+  document.getElementById('fStatus').value = '';
+  document.getElementById('fMonth').value = new Date().toISOString().slice(0,7);
+  loadMessages();
+}
+
+// ── COMPOSE ───────────────────────────────────────────────────────────────
+function openCompose() {
+  selectedStudent = null;
+  selectedParent  = null;
+  document.getElementById('cStudentSearch').value = '';
+  document.getElementById('cStudentId').value     = '';
+  document.getElementById('studentResults').style.display = 'none';
+  document.getElementById('parentGroup').style.display    = 'none';
+  document.getElementById('cParent').innerHTML    = '<option value="">— Select parent —</option>';
+  document.getElementById('cContent').value       = '';
+  document.getElementById('cNumber').value        = '';
+  document.getElementById('cType').value          = 'custom';
+  document.getElementById('composeModal').classList.add('open');
+}
+
+function closeCompose() {
+  document.getElementById('composeModal').classList.remove('open');
+}
+
+let searchTimeout;
+async function searchStudents() {
+  const q = document.getElementById('cStudentSearch').value.trim();
+  clearTimeout(searchTimeout);
+  if (q.length < 2) { document.getElementById('studentResults').style.display = 'none'; return; }
+  searchTimeout = setTimeout(async () => {
+    const rows = await fetch('/api/students?search=' + encodeURIComponent(q)).then(r => r.json());
+    const res  = document.getElementById('studentResults');
+    if (!rows.length) { res.style.display = 'none'; return; }
+    res.innerHTML = rows.slice(0,6).map(s =>
+      `<div class="student-item" onclick="selectStudent(${JSON.stringify(s)})">
+        <strong>${s.name}</strong> &nbsp;<small>Std ${s.standard}–${s.division} · ${s.id}</small>
+      </div>`
+    ).join('');
+    res.style.display = 'block';
+  }, 250);
+}
+
+async function selectStudent(s) {
+  selectedStudent = s;
+  document.getElementById('cStudentSearch').value         = s.name;
+  document.getElementById('cStudentId').value             = s.id;
+  document.getElementById('studentResults').style.display = 'none';
+
+  // Load parents
+  const parents = await fetch('/api/messages/parents/' + s.id).then(r => r.json());
+  const sel = document.getElementById('cParent');
+  sel.innerHTML = '<option value="">— Select parent —</option>';
+  parents.forEach(p => {
+    const o = document.createElement('option');
+    o.value       = p.id;
+    o.dataset.num = p.whatsapp_number;
+    o.textContent = `${p.name} (${p.relation})${p.is_primary ? ' ★' : ''}`;
+    sel.appendChild(o);
+  });
+  // Auto-select primary
+  const primary = parents.find(p => p.is_primary);
+  if (primary) {
+    sel.value = primary.id;
+    document.getElementById('cNumber').value = primary.whatsapp_number;
+    selectedParent = primary;
+  }
+  document.getElementById('parentGroup').style.display = 'block';
+  applyTemplate();
+}
+
+function onParentChange() {
+  const sel = document.getElementById('cParent');
+  const opt = sel.selectedOptions[0];
+  document.getElementById('cNumber').value = opt?.dataset?.num || '';
+  selectedParent = sel.value ? { id: sel.value, whatsapp_number: opt?.dataset?.num } : null;
+}
+
+function applyTemplate(type) {
+  const t = type || document.getElementById('cType').value;
+  if (type) document.getElementById('cType').value = t;
+  if (!selectedStudent) return;
+  const name = selectedStudent.name;
+  const cls  = `Std ${selectedStudent.standard}–${selectedStudent.division}`;
+  const month = new Date().toLocaleString('en-IN', { month: 'long', year: 'numeric' });
+  const templates = {
+    monthly_report: `Dear Parent,\n\nHere is ${name}'s performance report for ${month}.\n\nClass: ${cls}\nAttendance: [X]%\nAverage Score: [X]%\n\nPlease contact the institute for more details.\n\n— AttendIQ`,
+    absence_alert:  `Dear Parent,\n\nWe would like to inform you that ${name} (${cls}) was absent today.\n\nIf this is a planned absence, please inform the class teacher.\n\n— AttendIQ`,
+    score_update:   `Dear Parent,\n\n${name}'s (${cls}) recent test score has been updated.\n\nSubject: [Subject]\nTest: [Test Name]\nScore: [X]/[Total]\nGrade: [Grade]\n\n— AttendIQ`,
+    fee_reminder:   `Dear Parent,\n\nThis is a reminder that the fee payment for ${name} (${cls}) is due.\n\nKindly contact the institute at the earliest.\n\n— AttendIQ`,
+  };
+  if (templates[t]) document.getElementById('cContent').value = templates[t];
+}
+
+async function sendMessage() {
+  const studentId = document.getElementById('cStudentId').value;
+  const parentId  = document.getElementById('cParent').value;
+  const type      = document.getElementById('cType').value;
+  const content   = document.getElementById('cContent').value.trim();
+  const number    = document.getElementById('cNumber').value.trim();
+
+  if (!studentId || !parentId || !content || !number) {
+    showToast('Please fill all required fields', true); return;
+  }
+
+  const btn = document.getElementById('sendBtn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+
+  try {
+    const res = await fetch('/api/messages/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ student_id: studentId, parent_id: parseInt(parentId), message_type: type, message_content: content, whatsapp_number: number }),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail);
+    closeCompose();
+    showToast('Message queued — status: pending');
+    loadMessages();
+  } catch(e) {
+    showToast('Failed: ' + e.message, true);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Send Message';
+  }
+}
+
+function showToast(msg, isError = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 3500);
+}
+
+document.getElementById('composeModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeCompose();
+});
+</script>
+</body>
+</html>

@@ -110,7 +110,8 @@
   <nav>
     <a href="/">Dashboard</a>
     <a href="/students" class="active">Students</a>
-    <a href="/upload">Upload Scores</a>
+    <a href="/scores">Scores</a>
+    <a href="/messages">Messages</a>
   </nav>
 </header>
 
@@ -120,6 +121,7 @@
       <div class="page-title">Students</div>
       <div class="page-sub" id="countLabel">Loading…</div>
     </div>
+    <button class="edit-btn" style="padding:9px 18px;font-size:13px;font-weight:600;border-color:var(--accent);color:var(--accent)" onclick="openAdd()">+ Add Student</button>
   </div>
 
   <div class="filters">
@@ -212,6 +214,51 @@
   </div>
 </div>
 
+<!-- ADD STUDENT MODAL -->
+<div class="modal-backdrop" id="addModal">
+  <div class="modal">
+    <button class="close-btn" onclick="closeAdd()">✕</button>
+    <div class="modal-title">Add New Student</div>
+    <div class="modal-sub">ID and roll number are assigned automatically.</div>
+    <form id="addForm" onsubmit="submitAdd(event)">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Class <span style="color:var(--danger)">*</span></label>
+          <select id="a_class" required></select>
+        </div>
+        <div class="form-group full">
+          <label>Full Name <span style="color:var(--danger)">*</span></label>
+          <input type="text" id="a_name" required placeholder="e.g. Arjun Nair" />
+        </div>
+        <div class="form-group">
+          <label>Gender <span style="color:var(--danger)">*</span></label>
+          <select id="a_gender" required>
+            <option value="M">Male</option>
+            <option value="F">Female</option>
+            <option value="O">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Date of Birth</label>
+          <input type="date" id="a_dob" />
+        </div>
+        <div class="form-group">
+          <label>WhatsApp Number</label>
+          <input type="text" id="a_whatsapp" placeholder="+91…" />
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="a_email" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeAdd()">Cancel</button>
+        <button type="submit" class="btn-save" id="addBtn">Add Student</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -220,16 +267,75 @@ let editingId   = null;
 
 const genderLabel = { M: 'Male', F: 'Female', O: 'Other' };
 
+let classList = [];
+
 async function loadClasses() {
-  const classes = await fetch('/api/classes-list').then(r => r.json());
+  classList = await fetch('/api/classes-list').then(r => r.json());
   const sel = document.getElementById('classFilter');
-  classes.forEach(c => {
+  classList.forEach(c => {
     const opt = document.createElement('option');
     opt.value = c.id;
     opt.textContent = `Std ${c.standard} – Div ${c.division}`;
     sel.appendChild(opt);
   });
+  // Populate add-modal dropdown too
+  const addSel = document.getElementById('a_class');
+  classList.forEach(c => {
+    const opt = document.createElement('option');
+    opt.value = c.id;
+    opt.textContent = `Std ${c.standard} – Div ${c.division}`;
+    addSel.appendChild(opt);
+  });
 }
+
+function openAdd() {
+  document.getElementById('addForm').reset();
+  document.getElementById('addModal').classList.add('open');
+}
+
+function closeAdd() {
+  document.getElementById('addModal').classList.remove('open');
+}
+
+async function submitAdd(e) {
+  e.preventDefault();
+  const btn = document.getElementById('addBtn');
+  btn.disabled = true;
+  btn.textContent = 'Adding…';
+
+  const payload = {
+    class_id:        parseInt(document.getElementById('a_class').value),
+    name:            document.getElementById('a_name').value.trim(),
+    gender:          document.getElementById('a_gender').value,
+    date_of_birth:   document.getElementById('a_dob').value     || null,
+    whatsapp_number: document.getElementById('a_whatsapp').value || null,
+    email:           document.getElementById('a_email').value   || null,
+  };
+
+  try {
+    const res = await fetch('/api/students', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error((await res.json()).detail || 'Failed');
+    const data = await res.json();
+    closeAdd();
+    showToast(`Student added — ID: ${data.student_id}`);
+    // Reload the list to show the new student
+    allStudents = await fetch('/api/students').then(r => r.json());
+    applyFilter();
+  } catch (err) {
+    showToast('Add failed: ' + err.message, true);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Add Student';
+  }
+}
+
+document.getElementById('addModal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeAdd();
+});
 
 async function loadStudents() {
   allStudents = await fetch('/api/students').then(r => r.json());
